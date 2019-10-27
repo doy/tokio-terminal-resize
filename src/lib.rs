@@ -3,6 +3,7 @@
 
 use futures::future::Future as _;
 use futures::stream::Stream as _;
+use snafu::futures01::FutureExt as _;
 use snafu::futures01::StreamExt as _;
 use snafu::ResultExt as _;
 use std::convert::TryInto as _;
@@ -19,35 +20,55 @@ pub enum Error {
     SigWinchHandler { source: std::io::Error },
 }
 
-pub struct Resizer {
-    winches:
-        Box<dyn futures::stream::Stream<Item = (), Error = Error> + Send>,
-    sent_initial_size: bool,
+pub fn resizes() -> ResizeFuture {
+    ResizeFuture::default()
 }
 
-impl Resizer {
-    pub fn new() -> Self {
-        Self::default()
-    }
+pub struct ResizeFuture {
+    stream_fut: Box<
+        dyn futures::future::Future<Item = ResizeStream, Error = Error>
+            + Send,
+    >,
 }
 
-impl Default for Resizer {
+impl Default for ResizeFuture {
     fn default() -> Self {
-        let winches = tokio_signal::unix::Signal::new(
+        let stream_fut = tokio_signal::unix::Signal::new(
             tokio_signal::unix::libc::SIGWINCH,
         )
-        .flatten_stream()
-        .map(|_| ())
-        .context(SigWinchHandler);
+        .context(SigWinchHandler)
+        .and_then(|stream| {
+            futures::future::ok(ResizeStream {
+                winches: Box::new(
+                    stream.map(|_| ()).context(SigWinchHandler),
+                ),
+                sent_initial_size: false,
+            })
+        });
         Self {
-            winches: Box::new(winches),
-            sent_initial_size: false,
+            stream_fut: Box::new(stream_fut),
         }
     }
 }
 
 #[must_use = "streams do nothing unless polled"]
-impl futures::stream::Stream for Resizer {
+impl futures::future::Future for ResizeFuture {
+    type Item = ResizeStream;
+    type Error = Error;
+
+    fn poll(&mut self) -> futures::Poll<Self::Item, Self::Error> {
+        self.stream_fut.poll()
+    }
+}
+
+pub struct ResizeStream {
+    winches:
+        Box<dyn futures::stream::Stream<Item = (), Error = Error> + Send>,
+    sent_initial_size: bool,
+}
+
+#[must_use = "streams do nothing unless polled"]
+impl futures::stream::Stream for ResizeStream {
     type Item = (u16, u16);
     type Error = Error;
 
