@@ -1,3 +1,6 @@
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+
 use futures::future::Future as _;
 use futures::stream::Stream as _;
 use snafu::futures01::StreamExt as _;
