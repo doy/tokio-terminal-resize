@@ -4,6 +4,13 @@ version = "0.1.0"
 authors = ["Jesse Luehrs <doy@tozt.net>"]
 edition = "2018"
 
+description = "a stream of terminal resize events"
+license = "MIT"
+repository = "https://git.tozt.net/tokio-terminal-resize"
+readme = "README.md"
+keywords = ["terminal", "size", "sigwinch"]
+categories = ["asynchronous"]
+
 [dependencies]
 futures = "0.1.29"
 snafu = { version = "0.5", features = ["futures-01"] }

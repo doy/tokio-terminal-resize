@@ -21,8 +21,11 @@
 //! tokio::run(prog);
 //! ```
 
+// XXX this is broken with ale
+// #![warn(clippy::cargo)]
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
+#![allow(clippy::multiple_crate_versions)]
 
 use futures::future::Future as _;
 use futures::stream::Stream as _;
