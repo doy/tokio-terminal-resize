@@ -55,7 +55,7 @@ impl futures::stream::Stream for Resizer {
             self.sent_initial_size = true;
             return Ok(futures::Async::Ready(Some(term_size()?)));
         }
-        let _ = futures::try_ready!(self.winches.poll());
+        futures::try_ready!(self.winches.poll());
         Ok(futures::Async::Ready(Some(term_size()?)))
     }
 }
