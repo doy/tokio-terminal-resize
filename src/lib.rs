@@ -19,8 +19,6 @@ pub enum Error {
     SigWinchHandler { source: std::io::Error },
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
-
 pub struct Resizer {
     winches:
         Box<dyn futures::stream::Stream<Item = (), Error = Error> + Send>,
@@ -63,7 +61,7 @@ impl futures::stream::Stream for Resizer {
     }
 }
 
-fn term_size() -> Result<(u16, u16)> {
+fn term_size() -> Result<(u16, u16), Error> {
     if let Some((cols, rows)) = term_size::dimensions() {
         Ok((
             rows.try_into().context(InvalidTerminalSize)?,
