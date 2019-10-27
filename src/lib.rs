@@ -1,3 +1,26 @@
+//! Implements a stream of terminal resize events.
+//!
+//! # Overview
+//!
+//! Whenever the user resizes their terminal, a notification is sent to the
+//! application running in it. This crate provides those notifications in the
+//! form of a stream.
+//!
+//! # Synopsis
+//!
+//! ```
+//! # use futures::future::Future as _;
+//! # use futures::stream::Stream as _;
+//! let stream = tokio_terminal_resize::resizes().flatten_stream();
+//! let prog = stream
+//!     .for_each(|(rows, cols)| {
+//!         println!("terminal is now {}x{}", cols, rows);
+//!         Ok(())
+//!     })
+//!     .map_err(|e| eprintln!("error: {}", e));
+//! tokio::run(prog);
+//! ```
+
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 
@@ -8,22 +31,29 @@ use snafu::futures01::StreamExt as _;
 use snafu::ResultExt as _;
 use std::convert::TryInto as _;
 
+/// Errors returned by this crate.
 #[derive(Debug, snafu::Snafu)]
 pub enum Error {
+    /// failed to get terminal size
     #[snafu(display("failed to get terminal size"))]
     GetTerminalSize,
 
+    /// invalid terminal size found
     #[snafu(display("invalid terminal size found: {}", source))]
     InvalidTerminalSize { source: std::num::TryFromIntError },
 
+    /// SIGWINCH handler failed
     #[snafu(display("SIGWINCH handler failed: {}", source))]
     SigWinchHandler { source: std::io::Error },
 }
 
+/// Creates a stream which receives the new terminal size every time the
+/// user's terminal is resized.
 pub fn resizes() -> ResizeFuture {
     ResizeFuture::default()
 }
 
+/// Future which sets up the terminal size stream
 pub struct ResizeFuture {
     stream_fut: Box<
         dyn futures::future::Future<Item = ResizeStream, Error = Error>
@@ -61,6 +91,7 @@ impl futures::future::Future for ResizeFuture {
     }
 }
 
+/// Stream which returns the new terminal size every time it changes
 pub struct ResizeStream {
     winches:
         Box<dyn futures::stream::Stream<Item = (), Error = Error> + Send>,
